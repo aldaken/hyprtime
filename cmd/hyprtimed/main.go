@@ -1,12 +1,14 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"os"
 	"os/signal"
 	"syscall"
 
 	"github.com/ayanrajpoot10/hyprtime/internal/db"
+	"github.com/ayanrajpoot10/hyprtime/internal/lock"
 	"github.com/ayanrajpoot10/hyprtime/internal/logger"
 	"github.com/ayanrajpoot10/hyprtime/internal/tracker"
 )
@@ -23,6 +25,16 @@ func main() {
 	} else if *silent {
 		logger.SetLevel(logger.Silent)
 	}
+
+	lk, err := lock.Acquire("hyprtimed")
+	if err != nil {
+		if errors.Is(err, lock.ErrAlreadyRunning) {
+			logger.Infof("Another hyprtimed instance is already running, exiting")
+			return
+		}
+		logger.Fatalf("Lock error: %v", err)
+	}
+	defer lk.Release()
 
 	logger.Infof("Starting Daemon")
 
